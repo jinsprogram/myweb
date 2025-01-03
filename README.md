@@ -8,7 +8,7 @@ Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://j
 
 Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
 
-<h1>Jins Game list</h1>
+<h1>🌺🌈 향기로운 개발자의 정원: 아름다운 코드의 향연</h1>
 
 <table>
   <tr>
