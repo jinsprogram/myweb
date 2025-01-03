@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>동행복권 로또 번호 예측</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .predictions, .probability-table {
+      margin-top: 20px;
+    }
+    .predictions div, .probability-table div {
+      margin-bottom: 10px;
+    }
+    .table {
+      display: table;
+      width: 100%;
+    }
+    .table-row {
+      display: table-row;
+    }
+    .table-cell {
+      display: table-cell;
+      padding: 5px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h1>로또 번호 예측</h1>
+  
+  <!-- 기본 파일 다운로드 버튼 -->
+  <button id="downloadFile">기본 파일 다운로드</button>
+  <input type="file" id="fileInput" accept=".xlsx">
+  <button id="predictButton">예측하기</button>
+
+  <div class="predictions">
+    <h2>예상 번호</h2>
+    <div id="predictionList"></div>
+  </div>
+
+  <div class="probability-table">
+    <h2>각 번호 당첨 확률</h2>
+    <div id="probabilityTable" class="table"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    let uploadedData;
+    const defaultFileUrl = "https://raw.githubusercontent.com/jinsprogram/myweb/refs/heads/master/lottowinnumber_20250103.xlsx"; // 기본 파일 Raw 링크
+
+    // 기본 파일 다운로드 버튼 클릭 이벤트
+    document.getElementById("downloadFile").addEventListener("click", () => {
+    const link = document.createElement("a");
+    link.href = "https://raw.githubusercontent.com/jinsprogram/myweb/refs/heads/master/lottowinnumber_20250103.xlsx"; // GitHub Raw 파일 링크
+    link.download = "기본_로또_파일.xlsx";
+    link.click();
+  });
+
+    // 파일 업로드 이벤트
+    document.getElementById("fileInput").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          uploadedData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+          alert('파일 업로드 완료!');
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+
+    // 기본 파일 로드 함수
+    async function loadDefaultFile() {
+      const response = await fetch(defaultFileUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    }
+
+    // 파일 데이터에서 번호 추출
+    function extractNumbers(data) {
+      const numbers = [];
+      data.forEach(row => {
+        const keys = ["당첨번호1", "당첨번호2", "당첨번호3", "당첨번호4", "당첨번호5", "당첨번호6", "보너스번호"];
+        keys.forEach(key => {
+          if (row[key] && !isNaN(row[key])) {
+            numbers.push(row[key]);
+          }
+        });
+      });
+      return numbers;
+    }
+
+    // 예측 번호 생성
+    function predictNumbers(numbers) {
+      const numberFrequency = {};
+      const totalNumbers = numbers.length;
+
+      // 빈도 계산
+      numbers.forEach(num => {
+        numberFrequency[num] = (numberFrequency[num] || 0) + 1;
+      });
+
+      // 빈도 정렬
+      const sortedNumbers = Object.entries(numberFrequency)
+        .sort((a, b) => b[1] - a[1]);
+
+      // 예측 결과 만들기
+      const predictions = [];
+      for (let i = 0; i < 10; i++) {
+        const startIndex = i * 7; // 7개씩 묶음
+        const group = sortedNumbers.slice(startIndex, startIndex + 7)
+          .map(([num, freq]) => parseInt(num));
+        const probability = ((group.reduce((sum, num) => sum + numberFrequency[num], 0) / totalNumbers) * 100).toFixed(2);
+        predictions.push({ group, probability });
+      }
+
+      return { predictions, sortedNumbers, totalNumbers };
+    }
+
+    // 예측 결과 표시
+    function displayPredictions(predictions) {
+  const predictionList = document.getElementById('predictionList');
+  predictionList.innerHTML = "";
+  predictions.forEach(({ group, probability }, index) => {
+    if (group.length === 7) { // 예상 번호가 7개인 경우에만 표시
+      const div = document.createElement('div');
+      div.textContent = `예상 번호 ${index + 1} (당첨 확률 ${probability}%): ${group.join(", ")}`;
+      predictionList.appendChild(div);
+    }
+  });
+}
+
+    // 확률 테이블 표시
+    function displayProbabilityTable(sortedNumbers, totalNumbers) {
+      const probabilityTable = document.getElementById('probabilityTable');
+      probabilityTable.innerHTML = "";
+
+      sortedNumbers.forEach(([num, freq]) => {
+        const row = document.createElement('div');
+        row.className = 'table-row';
+
+        const cell1 = document.createElement('div');
+        cell1.className = 'table-cell';
+        cell1.textContent = `번호: ${num}`;
+
+        const cell2 = document.createElement('div');
+        cell2.className = 'table-cell';
+        cell2.textContent = `확률: ${((freq / totalNumbers) * 100).toFixed(2)}%`;
+
+        row.appendChild(cell1);
+        row.appendChild(cell2);
+        probabilityTable.appendChild(row);
+      });
+    }
+
+    // 예측 버튼 클릭 이벤트
+    document.getElementById('predictButton').addEventListener('click', async () => {
+      if (!uploadedData) {
+        alert("업로드된 파일이 없으므로 기본 파일로 진행합니다.");
+        uploadedData = await loadDefaultFile();
+      }
+      const numbers = extractNumbers(uploadedData);
+      const { predictions, sortedNumbers, totalNumbers } = predictNumbers(numbers);
+      displayPredictions(predictions);
+      displayProbabilityTable(sortedNumbers, totalNumbers);
+    });
+  </script>
+</body>
+</html>
